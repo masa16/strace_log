@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+
+require "strace_log"
+
+stat = StraceLog::Stat.new
+stat.parse(ARGF)
+stat.print
