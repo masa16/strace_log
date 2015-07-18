@@ -2,7 +2,7 @@ require 'strscan'
 
 module StraceLog
 
-  VERSION = "0.1.0"
+  VERSION = "0.1.1"
 
   class ParsedCall
     ESCAPES = [ /x[\da-f][\da-f]/i, /n/, /t/, /r/, /\\/, /"/, /\d+/]
