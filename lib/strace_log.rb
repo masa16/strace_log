@@ -2,13 +2,13 @@ require 'strscan'
 
 module StraceLog
 
-  VERSION = "0.1.1"
+  VERSION = "0.1.2"
 
   class ParsedCall
     ESCAPES = [ /x[\da-f][\da-f]/i, /n/, /t/, /r/, /\\/, /"/, /\d+/]
 
     def initialize(line)
-      if /^---.*---$/ =~ line
+      if /^(?:(\d\d:\d\d:\d\d|\d+)(?:\.(\d+))? )?---.*---$/ =~ line
         @mesg = line
       else
         s = StringScanner.new(line)
@@ -137,7 +137,7 @@ module StraceLog
       end
       if !@time.empty?
         keys = @time.keys.sort
-        Kernel.print " time={"+keys.map{|k| "#{k}:#{@time[k]}"}.join(", ")+"}\n"
+        Kernel.print " time={"+keys.map{|k| "%s:%.6g"%[k,@time[k]]}.join(", ")+"}\n"
       end
       if !@rename.empty?
         Kernel.print " rename={#{@rename.join(', ')}}\n"
@@ -253,7 +253,7 @@ module StraceLog
       Kernel.print "}\n\n"
       Kernel.print "time={\n"
       @spent.each do |m,t|
-        Kernel.print " #{m}: #{t},\n"
+        Kernel.printf " %s: %.6g,\n",m,t
       end
       Kernel.print "}\n\n"
       files = @stat.keys.select{|x| x.class==String}.sort
