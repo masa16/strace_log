@@ -1,7 +1,18 @@
 #!/usr/bin/env ruby
 
 require "strace_log"
+require 'optparse'
 
-stat = StraceLog::Stat.new
+params = {}
+outfile = nil
+
+opt = OptionParser.new
+opt.on('-o OUTFILE','--output') {|v| outfile = v}
+opt.on('-s','--stat') {|v| params[:sum] = true}
+opt.on('-t TABLEFILE','--table') {|v| params[:table] = v}
+opt.on('-c TABLECOLUMN','--column') {|v| params[:column] = v.to_i}
+opt.parse!(ARGV)
+
+stat = StraceLog::Stat.new(**params)
 stat.parse(ARGF)
-stat.print
+stat.write(outfile)

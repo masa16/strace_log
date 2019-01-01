@@ -1,4 +1,6 @@
 require 'strscan'
+require 'pathname'
+require 'csv'
 
 module StraceLog
 
@@ -8,6 +10,7 @@ module StraceLog
     ESCAPES = [ /x[\da-f][\da-f]/i, /n/, /t/, /r/, /\\/, /"/, /\d+/]
 
     def initialize(line)
+      @size = nil
       if /^(?:(\d\d:\d\d:\d\d|\d+)(?:\.(\d+))? )?[+-]{3}.*[+-]{3}$/ =~ line
         @mesg = line
       else
@@ -17,13 +20,13 @@ module StraceLog
         @usec = s[2]
         @func = s[3]
         @args = scan_items(s,/\s*\)\s*/)
-        s.scan(/\s*= ([^=<>\s]+)(?:\s+([^<>]+))?(?: <([\d.]+)>)?$/)
+        s.scan(/\s*= ([^=<>\s]+(?:<[^<>]*>)?)(?:\s+([^<>]+))?(?: <([\d.]+)>)?$/)
         @ret  = s[1]
         @mesg = s[2]
         @elap = s[3]
       end
     end
-    attr_reader :time, :usec, :func, :args, :ret , :mesg, :elap
+    attr_reader :time, :usec, :func, :args, :ret , :mesg, :elap, :size
 
     def scan_items(s,close)
       args = []
@@ -81,39 +84,48 @@ module StraceLog
     def scan_other(s)
       s.scan(/[^"\\,{}()\[\]]+/)
     end
+
+    def set_size
+      sz = @ret.to_i
+      if sz >= 0
+        @size = sz
+      end
+    end
   end
 
+
+  class Counter
+    def initialize
+      @calls = 0
+      @errors = 0
+      @time = 0
+      @size = nil
+    end
+    attr_reader :calls, :errors, :size, :time
+
+    def count(call)
+      @calls += 1
+      @errors += 1 if call.ret == "-1"
+      @time += call.elap.to_f if call.elap
+      @size = (@size||0) + call.size if call.size
+    end
+
+    def to_a
+      [@calls,@errors,"%.6f"%@time,@size]
+    end
+  end
 
   class IOCounter
     def initialize(path)
       @path = path
-      @ok   = {}
-      @fail = {}
-      @size = {}
-      @time = {}
       @rename = []
+      @counter = {}
     end
-    attr_reader :path, :ok, :fail, :size, :time, :rename
-
-    def add(h,func,c)
-      h[func] = (h[func] || 0) + c
-    end
+    attr_reader :path, :rename
 
     def count(fc)
-      if fc.ret == "-1"
-        add(@fail, fc.func, 1)
-      else
-        add(@ok, fc.func, 1)
-      end
-      add(@time, fc.func, fc.elap.to_f) if fc.elap
-    end
-
-    def count_size(fc)
-      sz = fc.ret.to_i
-      if sz >= 0
-        add(@size, fc.func, sz)
-      end
-      count(fc)
+      c = (@counter[fc.func] ||= Counter.new)
+      c.count(fc)
     end
 
     def rename_as(newpath)
@@ -121,41 +133,28 @@ module StraceLog
       @path = newpath
     end
 
-    def print
-      Kernel.print @path+":\n"
-      if !@ok.empty?
-        keys = @ok.keys.sort
-        Kernel.print " ok={"+keys.map{|k| "#{k}:#{@ok[k]}"}.join(", ")+"}\n"
+    def each
+      @counter.keys.map do |func|
+        yield [@path,func,*@counter[func].to_a]
       end
-      if !@fail.empty?
-        keys = @fail.keys.sort
-        Kernel.print " fail={"+keys.map{|k| "#{k}:#{@fail[k]}"}.join(", ")+"}\n"
-      end
-      if !@size.empty?
-        keys = @size.keys.sort
-        Kernel.print " size={"+keys.map{|k| "#{k}:#{@size[k]}"}.join(", ")+"}\n"
-      end
-      if !@time.empty?
-        keys = @time.keys.sort
-        Kernel.print " time={"+keys.map{|k| "%s:%.6f"%[k,@time[k]]}.join(", ")+"}\n"
-      end
-      if !@rename.empty?
-        Kernel.print " rename={#{@rename.join(', ')}}\n"
-      end
-      puts
     end
   end
 
-
   class Stat
 
-    def initialize
+    def initialize(sum:false,table:'/etc/mtab',column:2)
+      @sum = sum
       @stat = {}
-      @count = {}
-      @spent = {}
+      @total = IOCounter.new('*')
+      if @sum
+        a = open(table,'r').each_line.map do |line|
+          line.split(/\s+/)[column-1]
+        end.sort.reverse
+        @paths = Hash[ a.map{|x| [x, /^#{x.sub(/\/$/,'')}($|\/)/] } ]
+      end
     end
 
-    attr_reader :stat, :count, :spent
+    attr_reader :stat, :total
 
     def parse(a)
       @fd2path = ["stdin", "stdout", "stderr"]
@@ -164,101 +163,108 @@ module StraceLog
       end
     end
 
+    def get_fd(arg)
+      if /([-\d]+)(<.*>)?/ =~ arg
+        x = $1.to_i
+        return x
+      else
+        raise
+      end
+    end
+
     def stat_call(pc)
-      m = pc.func
-      return if m.nil?
-      @count[m] = (@count[m] || 0) + 1
-      @spent[m] = (@spent[m] || 0) + pc.elap.to_f if pc.elap
+      path = nil
 
-      case m
+      case pc.func
 
-      when /^(open|execve|l?stat|(read|un)?link|getc?wd|access|mkdir|mknod|chmod|chown)$/
+      when /^(execve|l?stat|(read|un)?link|getc?wd|access|mkdir|mknod|chmod|chown)$/
         path = pc.args[0]
-        count_path(path,pc)
-        if m=="open" && pc.ret != "-1"
+
+      when /^open$/
+        path = pc.args[0]
+        if pc.ret != "-1"
           fd = pc.ret.to_i
           @fd2path[fd] = path
         end
 
-      when /^(readv?|writev?)$/
-        path = @fd2path[pc.args[0].to_i]
-        count_size(path,pc)
+      when /^connect$/
+        fd = get_fd(pc.args[0])
+        @fd2path[fd] = path = "socket"
 
-      when /^(fstat|fchmod|[fl]chown|lseek|ioctl|fcntl|getdents|sendto|recvmsg|close)$/
-        fd = pc.args[0].to_i
-        count_fd(fd,pc)
-        if m=="close" && pc.ret != "-1"
+      when /^close$/
+        fd = get_fd(pc.args[0])
+        path = @fd2path[fd]
+        if pc.ret != "-1"
           @fd2path[fd] = nil
         end
 
+      when /^(readv?|writev?)$/
+        pc.set_size
+        fd = get_fd(pc.args[0])
+        path = @fd2path[fd]
+
+      when /^(fstat|fchmod|[fl]chown|lseek|ioctl|fcntl|getdents|sendto|recvmsg)$/
+        fd = get_fd(pc.args[0])
+        path = @fd2path[fd]
+
       when /^rename$/
-        path = pc.args[0]
-        count_path(path,pc)
         rename(pc)
+        path = pc.args[1]
 
       when /^dup[23]?$/
-        fd = pc.args[0].to_i
-        count_fd(fd,pc)
+        fd = get_fd(pc.args[0])
+        path = @fd2path[fd]
         if pc.ret != "-1"
           fd2 = pc.ret.to_i
           @fd2path[fd2] = @fd2path[fd]
         end
 
       when /^mmap$/
-        fd = pc.args[4].to_i
-        if fd >= 0
-          count_fd(fd,pc)
-        end
+        fd = get_fd(pc.args[4])
+        path = @fd2path[fd] if fd >= 0
 
-      when /^connect$/
-        fd = pc.args[0].to_i
-        @fd2path[fd] = path = pc.args[1]
-        count_path(path,pc)
-
+      when NilClass
+        return
       end
-    end
 
-    def count_fd(fd,pc)
-      path = @fd2path[fd]
-      count_path(path,pc)
-    end
+      @total.count(pc)
 
-    def count_path(path,pc)
-      io_counter(path).count(pc)
-    end
-
-    def count_size(path,pc)
-      io_counter(path).count_size(pc)
-    end
-
-    def io_counter(path)
-      @stat[path] ||= IOCounter.new(path)
+      if path
+        if @sum
+          realpath = File.exist?(path) ? Pathname.new(path).realdirpath.to_s : path
+          @paths.each do |mp,re|
+            if re =~ realpath
+              (@stat[mp] ||= IOCounter.new(mp)).count(pc)
+              return
+            end
+          end
+        end
+        (@stat[path] ||= IOCounter.new(path)).count(pc)
+      end
     end
 
     def rename(pc)
       if pc.ret != "-1"
         oldpath = pc.args[0]
         newpath = pc.args[1]
-        ioc = @stat[newpath] = @stat[oldpath]
+        ioc = @stat[newpath] = (@stat[oldpath] ||= IOCounter.new(oldpath))
         ioc.rename_as(newpath)
         @stat.delete(oldpath)
       end
     end
 
-    def print
-      Kernel.print "count={\n"
-      @count.each do |m,c|
-        Kernel.print " #{m}: #{c},\n"
+    def write(file=nil)
+      block = proc do |w|
+        w << ["path","syscall","calls","errors","time","size"]
+        @total.each{|item| w << item}
+        @stat.each do |path,cntr|
+          cntr.each{|item| w << item}
+        end
       end
-      Kernel.print "}\n\n"
-      Kernel.print "time={\n"
-      @spent.each do |m,t|
-        Kernel.printf " %s: %.6f,\n",m,t
-      end
-      Kernel.print "}\n\n"
-      files = @stat.keys.select{|x| x.class==String}.sort
-      files.each do |fn|
-        @stat[fn].print
+      if file
+        CSV.open(file,'w',&block)
+      else
+        CSV.instance(&block)
       end
     end
 
