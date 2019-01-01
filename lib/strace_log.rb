@@ -94,53 +94,53 @@ module StraceLog
   end
 
 
-  class Counter
-    def initialize
-      @calls = 0
-      @errors = 0
-      @time = 0
-      @size = nil
-    end
-    attr_reader :calls, :errors, :size, :time
+  class Stat
 
-    def count(call)
-      @calls += 1
-      @errors += 1 if call.ret == "-1"
-      @time += call.elap.to_f if call.elap
-      @size = (@size||0) + call.size if call.size
-    end
+    class Counter
+      def initialize
+        @calls = 0
+        @errors = 0
+        @time = 0
+        @size = nil
+      end
+      attr_reader :calls, :errors, :size, :time
 
-    def to_a
-      [@calls,@errors,"%.6f"%@time,@size]
-    end
-  end
+      def count(call)
+        @calls += 1
+        @errors += 1 if call.ret == "-1"
+        @time += call.elap.to_f if call.elap
+        @size = (@size||0) + call.size if call.size
+      end
 
-  class CallCounter
-    def initialize(path)
-      @path = path
-      @rename = []
-      @counter = {}
-    end
-    attr_reader :path, :rename
-
-    def count(call)
-      c = (@counter[call.func] ||= Counter.new)
-      c.count(call)
-    end
-
-    def rename_as(newpath)
-      @rename << @path
-      @path = newpath
-    end
-
-    def each
-      @counter.keys.map do |func|
-        yield [@path,func,*@counter[func].to_a]
+      def to_a
+        [@calls,@errors,"%.6f"%@time,@size]
       end
     end
-  end
 
-  class Stat
+    class CallCounter
+      def initialize(path)
+        @path = path
+        @rename = []
+        @counter = {}
+      end
+      attr_reader :path, :rename
+
+      def count(call)
+        c = (@counter[call.func] ||= Counter.new)
+        c.count(call)
+      end
+
+      def rename_as(newpath)
+        @rename << @path
+        @path = newpath
+      end
+
+      def each
+        @counter.keys.map do |func|
+          yield [@path,func,*@counter[func].to_a]
+        end
+      end
+    end
 
     def initialize(sum:false,table:'/etc/mtab',column:2)
       @sum = sum
