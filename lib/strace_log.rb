@@ -115,7 +115,7 @@ module StraceLog
     end
   end
 
-  class IOCounter
+  class CallCounter
     def initialize(path)
       @path = path
       @rename = []
@@ -123,9 +123,9 @@ module StraceLog
     end
     attr_reader :path, :rename
 
-    def count(fc)
-      c = (@counter[fc.func] ||= Counter.new)
-      c.count(fc)
+    def count(call)
+      c = (@counter[call.func] ||= Counter.new)
+      c.count(call)
     end
 
     def rename_as(newpath)
@@ -145,7 +145,7 @@ module StraceLog
     def initialize(sum:false,table:'/etc/mtab',column:2)
       @sum = sum
       @stat = {}
-      @total = IOCounter.new('*')
+      @total = CallCounter.new('*')
       if @sum
         a = open(table,'r').each_line.map do |line|
           line.split(/\s+/)[column-1]
@@ -172,82 +172,82 @@ module StraceLog
       end
     end
 
-    def stat_call(pc)
+    def stat_call(call)
       path = nil
 
-      case pc.func
+      case call.func
 
       when /^(execve|l?stat|(read|un)?link|getc?wd|access|mkdir|mknod|chmod|chown)$/
-        path = pc.args[0]
+        path = call.args[0]
 
       when /^open$/
-        path = pc.args[0]
-        if pc.ret != "-1"
-          fd = pc.ret.to_i
+        path = call.args[0]
+        if call.ret != "-1"
+          fd = call.ret.to_i
           @fd2path[fd] = path
         end
 
       when /^connect$/
-        fd = get_fd(pc.args[0])
+        fd = get_fd(call.args[0])
         @fd2path[fd] = path = "socket"
 
       when /^close$/
-        fd = get_fd(pc.args[0])
+        fd = get_fd(call.args[0])
         path = @fd2path[fd]
-        if pc.ret != "-1"
+        if call.ret != "-1"
           @fd2path[fd] = nil
         end
 
       when /^(readv?|writev?)$/
-        pc.set_size
-        fd = get_fd(pc.args[0])
+        call.set_size
+        fd = get_fd(call.args[0])
         path = @fd2path[fd]
 
       when /^(fstat|fchmod|[fl]chown|lseek|ioctl|fcntl|getdents|sendto|recvmsg)$/
-        fd = get_fd(pc.args[0])
+        fd = get_fd(call.args[0])
         path = @fd2path[fd]
 
       when /^rename$/
-        rename(pc)
-        path = pc.args[1]
+        rename(call)
+        path = call.args[1]
 
       when /^dup[23]?$/
-        fd = get_fd(pc.args[0])
+        fd = get_fd(call.args[0])
         path = @fd2path[fd]
-        if pc.ret != "-1"
-          fd2 = pc.ret.to_i
+        if call.ret != "-1"
+          fd2 = call.ret.to_i
           @fd2path[fd2] = @fd2path[fd]
         end
 
       when /^mmap$/
-        fd = get_fd(pc.args[4])
+        fd = get_fd(call.args[4])
         path = @fd2path[fd] if fd >= 0
 
       when NilClass
         return
       end
 
-      @total.count(pc)
+      @total.count(call)
 
       if path
         if @sum
           realpath = File.exist?(path) ? Pathname.new(path).realdirpath.to_s : path
           @paths.each do |mp,re|
             if re =~ realpath
-              (@stat[mp] ||= IOCounter.new(mp)).count(pc)
+              (@stat[mp] ||= CallCounter.new(mp)).count(call)
               return
             end
           end
         end
-        (@stat[path] ||= IOCounter.new(path)).count(pc)
+        (@stat[path] ||= CallCounter.new(path)).count(call)
       end
     end
 
-    def rename(pc)
-      if pc.ret != "-1"
-        oldpath = pc.args[0]
-        newpath = pc.args[1]
-        ioc = @stat[newpath] = (@stat[oldpath] ||= IOCounter.new(oldpath))
+    def rename(call)
+      if call.ret != "-1"
+        oldpath = call.args[0]
+        newpath = call.args[1]
+        ioc = @stat[newpath] = (@stat[oldpath] ||= CallCounter.new(oldpath))
         ioc.rename_as(newpath)
         @stat.delete(oldpath)
       end
