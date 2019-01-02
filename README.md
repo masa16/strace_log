@@ -25,104 +25,59 @@ Or install it yourself as:
 
 Run command with strace:
 
-    $ strace -ttt -T -o strace.log command
+    $ strace -T -o strace.log command
 
 Print statistics of strace log:
 
-    $ strace-stat strace.log
+    $ strace-stat -s -o strace.csv strace.log
 
 ## Classes
 
 * StraceLog::ParsedCall
-* StraceLog::IOCounter
 * StraceLog::Stat
 
 ## Example
 
-    $ strace -ttt -T -o strace.log dd if=/dev/zero of=tmpfile count=10000
-
-    $ strace-stat strace.log
-    count={
-     execve: 1,
-     brk: 3,
-     mmap: 16,
-     access: 1,
-     open: 42,
-     stat: 19,
-     read: 10005,
-     fstat: 6,
-     mprotect: 7,
-     close: 11,
-     arch_prctl: 1,
-     set_tid_address: 1,
-     set_robust_list: 1,
-     futex: 2,
-     rt_sigaction: 6,
-     rt_sigprocmask: 1,
-     getrlimit: 1,
-     dup2: 2,
-     lseek: 1,
-     clock_gettime: 2,
-     write: 10003,
-     munmap: 1,
-     exit_group: 1,
-    }
-
-    time={
-     execve: 0.000479,
-     brk: 0.000376,
-     mmap: 0.001751,
-     access: 0.000157,
-     open: 0.004224,
-     stat: 0.001602,
-     read: 1.176440,
-     fstat: 0.000697,
-     mprotect: 0.000647,
-     close: 0.006732,
-     arch_prctl: 0.000101,
-     set_tid_address: 0.000127,
-     set_robust_list: 0.000111,
-     futex: 0.000232,
-     rt_sigaction: 0.000718,
-     rt_sigprocmask: 0.000116,
-     getrlimit: 0.000091,
-     dup2: 0.000213,
-     lseek: 0.000112,
-     clock_gettime: 0.000343,
-     write: 1.229899,
-     munmap: 0.000110,
-    }
-
-    /bin/dd:
-     ok={execve:1}
-     time={execve:0.000479}
-
-    /dev/zero:
-     ok={close:2, dup2:1, lseek:1, open:1, read:10000}
-     size={read:5120000}
-     time={close:0.000224, dup2:0.000112, lseek:0.000112, open:0.000119, read:1.176062}
-
-    /etc/ld.so.preload:
-     fail={access:1}
-     time={access:0.000157}
-
-    ...
-
-    /usr/share/locale/locale.alias:
-     ok={close:1, fstat:1, open:1, read:2}
-     size={read:2512}
-     time={close:0.000202, fstat:0.000216, open:0.000124, read:0.000221}
-
-    stderr:
-     ok={close:1, write:3}
-     size={write:90}
-     time={close:0.000022, write:0.000243}
-
-    tmpfile:
-     ok={close:2, dup2:1, open:1, write:10000}
-     size={write:5120000}
-     time={close:0.005866, dup2:0.000101, open:0.000154, write:1.229656}
-
+  $ strace-stat -s strace.log -o strace.csv
+  $ cat strace.csv
+  path,syscall,calls,errors,time,size
+  *,execve,1,0,0.009673,
+  *,brk,4,0,0.000057,
+  *,mmap,10,0,0.000285,
+  *,access,1,1,0.000021,
+  *,open,39,32,0.001220,
+  *,stat,27,21,0.000470,
+  *,read,10003,0,0.123271,5123334
+  *,fstat,5,0,0.000147,
+  *,mprotect,4,0,0.000075,
+  *,close,10,0,0.000311,
+  *,arch_prctl,1,0,0.000012,
+  *,rt_sigaction,4,0,0.000050,
+  *,dup2,2,0,0.000037,
+  *,lseek,1,0,0.000006,
+  *,write,10003,0,0.246277,5120136
+  *,munmap,1,0,0.000049,
+  *,exit_group,1,0,0.000000,
+  /,execve,1,0,0.009673,
+  /,access,1,1,0.000021,
+  /,open,29,24,0.000885,
+  /,stat,19,14,0.000346,
+  /,read,3,0,0.000101,3334
+  /,fstat,5,0,0.000147,
+  /,mmap,5,0,0.000181,
+  /,close,5,0,0.000167,
+  /home,open,9,8,0.000251,
+  /home,stat,8,7,0.000124,
+  /home,dup2,1,0,0.000030,
+  /home,close,2,0,0.000054,
+  /home,write,10000,0,0.246116,5120000
+  /dev,open,1,0,0.000084,
+  /dev,dup2,1,0,0.000007,
+  /dev,close,2,0,0.000049,
+  /dev,lseek,1,0,0.000006,
+  /dev,read,10000,0,0.123170,5120000
+  stderr,write,3,0,0.000161,136
+  stderr,close,1,0,0.000041,
 
 ## Contributing
 
