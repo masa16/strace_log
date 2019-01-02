@@ -4,7 +4,7 @@ require 'csv'
 
 module StraceLog
 
-  VERSION = "0.1.3"
+  VERSION = "0.2.1"
 
   class ParsedCall
     ESCAPES = [ /x[\da-f][\da-f]/i, /n/, /t/, /r/, /\\/, /"/, /\d+/]
