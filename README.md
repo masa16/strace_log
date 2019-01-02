@@ -31,6 +31,14 @@ Print statistics of strace log:
 
     $ strace-stat -s -o strace.csv strace.log
 
+Option for `strace-stat`:
+
+    Usage: strace-stat [options] [STRACE_LOG_FILE]
+        -o, --output OUTFILE             output CSV filename
+        -s, --stat                       output statistics by mount point (default: statistics by each path)
+        -t, --table TABLEFILE            filename of mounted file system table (default:/etc/mtab)
+        -c, --column TABLECOLUMN         column number of mount point in mtab (default:2)
+
 ## Classes
 
 * StraceLog::ParsedCall
@@ -38,7 +46,8 @@ Print statistics of strace log:
 
 ## Example
 
-    $ strace-stat -s strace.log -o strace.csv
+    $ strace -T -o strace.log dd if=/dev/zero of=tmpfile count=10000
+    $ strace-stat -s -o strace.csv strace.log
     $ cat strace.csv
     path,syscall,calls,errors,time,size
     *,execve,1,0,0.009673,

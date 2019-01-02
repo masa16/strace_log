@@ -7,10 +7,11 @@ params = {}
 outfile = nil
 
 opt = OptionParser.new
-opt.on('-o OUTFILE','--output') {|v| outfile = v}
-opt.on('-s','--stat') {|v| params[:sum] = true}
-opt.on('-t TABLEFILE','--table') {|v| params[:table] = v}
-opt.on('-c TABLECOLUMN','--column') {|v| params[:column] = v.to_i}
+opt.on('-o OUTFILE','--output','output CSV filename') {|v| outfile = v}
+opt.on('-s','--stat','output statistics by mount point (default: statistics by each path)') {|v| params[:sum] = true}
+opt.on('-t TABLEFILE','--table','filename of mounted file system table (default:/etc/mtab)') {|v| params[:table] = v}
+opt.on('-c TABLECOLUMN','--column','column number of mount point in mtab (default:2)') {|v| params[:column] = v.to_i}
+opt.banner += ' [STRACE_LOG_FILE]'
 opt.parse!(ARGV)
 
 stat = StraceLog::Stat.new(**params)
