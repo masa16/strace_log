@@ -38,46 +38,46 @@ Print statistics of strace log:
 
 ## Example
 
-  $ strace-stat -s strace.log -o strace.csv
-  $ cat strace.csv
-  path,syscall,calls,errors,time,size
-  *,execve,1,0,0.009673,
-  *,brk,4,0,0.000057,
-  *,mmap,10,0,0.000285,
-  *,access,1,1,0.000021,
-  *,open,39,32,0.001220,
-  *,stat,27,21,0.000470,
-  *,read,10003,0,0.123271,5123334
-  *,fstat,5,0,0.000147,
-  *,mprotect,4,0,0.000075,
-  *,close,10,0,0.000311,
-  *,arch_prctl,1,0,0.000012,
-  *,rt_sigaction,4,0,0.000050,
-  *,dup2,2,0,0.000037,
-  *,lseek,1,0,0.000006,
-  *,write,10003,0,0.246277,5120136
-  *,munmap,1,0,0.000049,
-  *,exit_group,1,0,0.000000,
-  /,execve,1,0,0.009673,
-  /,access,1,1,0.000021,
-  /,open,29,24,0.000885,
-  /,stat,19,14,0.000346,
-  /,read,3,0,0.000101,3334
-  /,fstat,5,0,0.000147,
-  /,mmap,5,0,0.000181,
-  /,close,5,0,0.000167,
-  /home,open,9,8,0.000251,
-  /home,stat,8,7,0.000124,
-  /home,dup2,1,0,0.000030,
-  /home,close,2,0,0.000054,
-  /home,write,10000,0,0.246116,5120000
-  /dev,open,1,0,0.000084,
-  /dev,dup2,1,0,0.000007,
-  /dev,close,2,0,0.000049,
-  /dev,lseek,1,0,0.000006,
-  /dev,read,10000,0,0.123170,5120000
-  stderr,write,3,0,0.000161,136
-  stderr,close,1,0,0.000041,
+    $ strace-stat -s strace.log -o strace.csv
+    $ cat strace.csv
+    path,syscall,calls,errors,time,size
+    *,execve,1,0,0.009673,
+    *,brk,4,0,0.000057,
+    *,mmap,10,0,0.000285,
+    *,access,1,1,0.000021,
+    *,open,39,32,0.001220,
+    *,stat,27,21,0.000470,
+    *,read,10003,0,0.123271,5123334
+    *,fstat,5,0,0.000147,
+    *,mprotect,4,0,0.000075,
+    *,close,10,0,0.000311,
+    *,arch_prctl,1,0,0.000012,
+    *,rt_sigaction,4,0,0.000050,
+    *,dup2,2,0,0.000037,
+    *,lseek,1,0,0.000006,
+    *,write,10003,0,0.246277,5120136
+    *,munmap,1,0,0.000049,
+    *,exit_group,1,0,0.000000,
+    /,execve,1,0,0.009673,
+    /,access,1,1,0.000021,
+    /,open,29,24,0.000885,
+    /,stat,19,14,0.000346,
+    /,read,3,0,0.000101,3334
+    /,fstat,5,0,0.000147,
+    /,mmap,5,0,0.000181,
+    /,close,5,0,0.000167,
+    /home,open,9,8,0.000251,
+    /home,stat,8,7,0.000124,
+    /home,dup2,1,0,0.000030,
+    /home,close,2,0,0.000054,
+    /home,write,10000,0,0.246116,5120000
+    /dev,open,1,0,0.000084,
+    /dev,dup2,1,0,0.000007,
+    /dev,close,2,0,0.000049,
+    /dev,lseek,1,0,0.000006,
+    /dev,read,10000,0,0.123170,5120000
+    stderr,write,3,0,0.000161,136
+    stderr,close,1,0,0.000041,
 
 ## Contributing
 
