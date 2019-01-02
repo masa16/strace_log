@@ -33,8 +33,8 @@ Output statistics of strace log by mount point to CSV file:
 
 Option for `strace-stat`:
 
-    Usage: strace-stat [options] [STRACE_LOG]
-        STRACE_LOG                       filename of strace log (default: stdin)
+    Usage: strace-stat [options] [FILE]
+        FILE                             filename of strace log (default: stdin)
         -o, --output OUTFILE             output CSV filename
         -s, --stat                       output statistics by mount point (default: statistics by each path)
         -t, --table TABLEFILE            filename of mounted file system table (default:/etc/mtab)
@@ -88,6 +88,12 @@ Option for `strace-stat`:
     /dev,read,10000,0,0.123170,5120000
     stderr,write,3,0,0.000161,136
     stderr,close,1,0,0.000041,
+
+(path=* means total sum for each system call)
+
+Same example using pipe:
+
+    $ strace -T -s 0 -o '|strace-stat -s -o strace.csv' dd if=/dev/zero of=tmpfile count=10000
 
 ## Contributing
 
