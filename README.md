@@ -27,13 +27,14 @@ Run command with strace:
 
     $ strace -T -o strace.log command
 
-Print statistics of strace log:
+Output statistics of strace log by mount point to CSV file:
 
     $ strace-stat -s -o strace.csv strace.log
 
 Option for `strace-stat`:
 
-    Usage: strace-stat [options] [STRACE_LOG_FILE]
+    Usage: strace-stat [options] [STRACE_LOG]
+        STRACE_LOG                       filename of strace log (default: stdin)
         -o, --output OUTFILE             output CSV filename
         -s, --stat                       output statistics by mount point (default: statistics by each path)
         -t, --table TABLEFILE            filename of mounted file system table (default:/etc/mtab)
